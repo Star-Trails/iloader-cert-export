@@ -1,175 +1,228 @@
-// Package exporter exports existing iLoader signing identities without network access.
+// Package exporter exports an existing iLoader signing identity through the bundled Windows helper.
 package exporter
 
 import (
+	"bufio"
 	"context"
-	"crypto/rsa"
-	"crypto/sha256"
 	"crypto/x509"
-	"encoding/hex"
+	"encoding/base64"
+	"encoding/json"
 	"errors"
-	"fmt"
+	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
-	"time"
 
-	"go.mozilla.org/pkcs7"
-	"howett.net/plist"
-	"software.sslmate.com/src/go-pkcs12"
+	"github.com/Star-Trails/iloader-cert-export/locales"
 )
 
-type Config struct{}
-type Service struct{}
-type Request struct{ AppleID, OutputDir, P12Password string }
-type Account struct{ AppleID string }
-type Progress struct{ Stage, Message string }
-type Callbacks struct{ Progress func(Progress) }
+type Config struct {
+	// HelperPath overrides the bundled helper location. It is never resolved through PATH.
+	HelperPath string
+}
+
+type Request struct {
+	AppleID     string `json:"apple_id"`
+	OutputDir   string `json:"output_dir"`
+	P12Password string `json:"p12_password"`
+}
+
+type Account struct {
+	AppleID string
+}
+
+type Progress struct {
+	Stage   string
+	Message string
+}
+
+type Callbacks struct {
+	// Callbacks run on Export's goroutine; the UI must marshal updates onto its UI thread.
+	Progress func(Progress)
+	// TwoFactorCode must return when ctx is canceled. An error aborts the export.
+	TwoFactorCode func(context.Context) (string, error)
+}
+
 type Result struct {
-	P12Path, TeamID, TeamName string
-	certificate               *x509.Certificate
-	issuers                   []*x509.Certificate
+	P12Path        string `json:"p12_path"`
+	TeamID         string `json:"team_id"`
+	TeamName       string `json:"team_name"`
+	CertificateDER string `json:"certificate_der"`
+
+	certificate *x509.Certificate
 }
 
-func New(Config) (*Service, error) { return &Service{}, nil }
-
-type profile struct {
-	TeamIdentifier        []string `plist:"TeamIdentifier"`
-	TeamName              string   `plist:"TeamName"`
-	DeveloperCertificates [][]byte `plist:"DeveloperCertificates"`
-	issuers               []*x509.Certificate
+type Service struct {
+	helperPath string
 }
 
-func matchingCertificate(dir string, key *rsa.PrivateKey, now time.Time) (*x509.Certificate, profile, error) {
-	entries, err := os.ReadDir(dir)
+func New(config Config) (*Service, error) {
+	if runtime.GOOS != "windows" {
+		return nil, errors.New(locales.ErrWindowsOnly())
+	}
+	path := config.HelperPath
+	if path == "" {
+		executable, err := os.Executable()
+		if err != nil {
+			return nil, errors.New(locales.ErrHelperDir())
+		}
+		path = filepath.Join(filepath.Dir(executable), "iloader-cert-helper.exe")
+	}
+	path, err := filepath.Abs(path)
 	if err != nil {
-		return nil, profile{}, err
+		return nil, errors.New(locales.ErrHelperPath())
 	}
-	var best *x509.Certificate
-	var selected profile
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.EqualFold(filepath.Ext(entry.Name()), ".mobileprovision") {
-			continue
-		}
-		file := filepath.Join(dir, entry.Name())
-		info, err := entry.Info()
-		if err != nil || info.Size() > 32*1024*1024 {
-			continue
-		}
-		data, err := os.ReadFile(file)
-		if err != nil {
-			continue
-		}
-		signed, err := pkcs7.Parse(data)
-		if err != nil {
-			continue
-		}
-		var p profile
-		if _, err := plist.Unmarshal(signed.Content, &p); err != nil {
-			continue
-		}
-		p.issuers = signed.Certificates
-		for _, encoded := range p.DeveloperCertificates {
-			cert, err := x509.ParseCertificate(encoded)
-			if err != nil {
-				continue
-			}
-			public, ok := cert.PublicKey.(*rsa.PublicKey)
-			if !ok || !public.Equal(&key.PublicKey) || now.Before(cert.NotBefore) || !now.Before(cert.NotAfter) {
-				continue
-			}
-			if best == nil || cert.NotAfter.After(best.NotAfter) {
-				best, selected = cert, p
-			}
-		}
+	info, err := os.Stat(path)
+	if err != nil || !info.Mode().IsRegular() {
+		return nil, errors.New(locales.ErrHelperMissing())
 	}
-	return best, selected, nil
+	return &Service{helperPath: path}, nil
 }
 
-// Export only reads iLoader storage; it does not contact Apple or change certificates.
+type event struct {
+	Type   string `json:"type"`
+	Stage  string `json:"stage"`
+	Code   string `json:"code"`
+	Result Result `json:"result"`
+}
+
+var progressMessages = map[string]func() string{
+	"storage":           locales.StageStorage,
+	"local_profiles":    locales.StageLocalProfiles,
+	"saved_credentials": locales.StageSavedCredentials,
+	"authenticating":    locales.StageAuthenticating,
+	"two_factor":        locales.StageTwoFactor,
+	"certificates":      locales.StageCertificates,
+	"writing":           locales.StageWriting,
+	"complete":          locales.StageComplete,
+}
+
+var helperErrors = map[string]func() string{
+	"invalid_request":   locales.ErrInvalidRequest,
+	"storage":           locales.ErrStorage,
+	"saved_credentials": locales.ErrSavedCredentials,
+	"authentication":    locales.ErrAuthentication,
+	"two_factor":        locales.ErrTwoFactor,
+	"certificates":      locales.ErrCertificates,
+	"no_match":          locales.ErrNoMatch,
+	"encode":            locales.ErrEncode,
+	"output":            locales.ErrOutput,
+	"internal":          locales.ErrInternal,
+}
+
+// Export reads an existing identity; it never creates or revokes Apple certificates.
+// P12 passwords and verification codes travel only over the helper's stdin pipe.
 func (s *Service) Export(ctx context.Context, request Request, callbacks Callbacks) (Result, error) {
 	if err := ctx.Err(); err != nil {
 		return Result{}, err
 	}
-	id := strings.TrimSpace(request.AppleID)
-	if id == "" || request.OutputDir == "" || request.P12Password == "" {
-		return Result{}, errors.New("请选择账户、输出文件夹并设置导出密码")
+	request.AppleID = strings.TrimSpace(request.AppleID)
+	if request.AppleID == "" || request.P12Password == "" || request.OutputDir == "" {
+		return Result{}, errors.New(helperErrors["invalid_request"]())
 	}
-	appdata := os.Getenv("APPDATA")
-	if appdata == "" {
-		return Result{}, errors.New("无法定位 iLoader 用户数据目录")
-	}
-	dir := filepath.Join(appdata, "me.nabdev.iloader")
-	if callbacks.Progress != nil {
-		callbacks.Progress(Progress{"storage", "正在读取 iLoader 已有私钥…"})
-	}
-	digest := sha256.Sum256([]byte(strings.ToLower(id)))
-	entry := hex.EncodeToString(digest[:]) + "/key"
-	data, err := readCredential(entry)
+	outputDir, err := filepath.Abs(request.OutputDir)
 	if err != nil {
-		data, err = os.ReadFile(filepath.Join(dir, filepath.FromSlash(entry)))
+		return Result{}, errors.New(helperErrors["output"]())
 	}
+	info, err := os.Stat(outputDir)
+	if err != nil || !info.IsDir() {
+		return Result{}, errors.New(helperErrors["output"]())
+	}
+	request.OutputDir = outputDir
+
+	processCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	cmd := exec.CommandContext(processCtx, s.helperPath)
+	configureCommand(cmd)
+	// Never surface dependency diagnostics: Apple responses can contain account tokens.
+	cmd.Stderr = io.Discard
+	stdin, err := cmd.StdinPipe()
 	if err != nil {
-		return Result{}, errors.New("未找到此账户的 iLoader 私钥")
+		return Result{}, errors.New(locales.ErrHelperComm())
 	}
-	defer clear(data)
-	parsed, err := x509.ParsePKCS8PrivateKey(data)
+	defer stdin.Close()
+	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		return Result{}, errors.New("无法读取 iLoader 私钥")
+		return Result{}, errors.New(locales.ErrHelperComm())
 	}
-	key, ok := parsed.(*rsa.PrivateKey)
-	if !ok {
-		return Result{}, errors.New("iLoader 私钥格式不受支持")
+	if err := cmd.Start(); err != nil {
+		return Result{}, errors.New(locales.ErrHelperStart())
 	}
-	if callbacks.Progress != nil {
-		callbacks.Progress(Progress{"local_profiles", "正在查找匹配的本地证书…"})
-	}
-	cert, p, err := matchingCertificate(dir, key, time.Now())
-	if err != nil {
-		return Result{}, errors.New("无法读取 iLoader 的本地描述文件")
-	}
-	if cert == nil {
-		return Result{}, fmt.Errorf("没有找到与此私钥匹配的本地证书。请把包含该证书的 .mobileprovision 放到 %s。", dir)
-	}
-	if err := ctx.Err(); err != nil {
-		return Result{}, err
-	}
-	if callbacks.Progress != nil {
-		callbacks.Progress(Progress{"writing", "正在加密并保存 P12 文件…"})
-	}
-	encoded, err := pkcs12.Modern2023.Encode(key, cert, nil, request.P12Password)
-	if err != nil {
-		return Result{}, errors.New("无法生成 P12 文件")
-	}
-	defer clear(encoded)
-	dirout, err := filepath.Abs(request.OutputDir)
-	if err != nil {
-		return Result{}, errors.New("输出文件夹无效")
-	}
-	for n := range 10000 {
-		name := "iloader-certificate.p12"
-		if n > 0 {
-			name = fmt.Sprintf("iloader-certificate-%d.p12", n)
+	waited := false
+	defer func() {
+		if !waited {
+			cancel()
+			_ = cmd.Wait()
 		}
-		path := filepath.Join(dirout, name)
-		f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
-		if errors.Is(err, os.ErrExist) {
-			continue
-		}
-		if err != nil {
-			return Result{}, errors.New("无法保存 P12，请检查输出文件夹权限")
-		}
-		_, writeErr := f.Write(encoded)
-		closeErr := f.Close()
-		if writeErr != nil || closeErr != nil {
-			_ = os.Remove(path)
-			return Result{}, errors.New("无法保存完整的 P12 文件")
-		}
-		result := Result{P12Path: path, TeamName: p.TeamName, certificate: cert, issuers: p.issuers}
-		if len(p.TeamIdentifier) > 0 {
-			result.TeamID = p.TeamIdentifier[0]
-		}
-		return result, nil
+	}()
+	encoder := json.NewEncoder(stdin)
+	if err := encoder.Encode(request); err != nil {
+		return Result{}, errors.New(locales.ErrHelperSend())
 	}
-	return Result{}, errors.New("无法创建 P12 文件：同名文件过多")
+	// Avoid retaining another copy of the P12 password through the rest of the operation.
+	request.P12Password = ""
+
+	scanner := bufio.NewScanner(stdout)
+	scanner.Buffer(make([]byte, 4096), 64*1024)
+	var result Result
+	completed := false
+	for scanner.Scan() {
+		var message event
+		if json.Unmarshal(scanner.Bytes(), &message) != nil {
+			return Result{}, errors.New(locales.ErrHelperProtocol())
+		}
+		switch message.Type {
+		case "progress":
+			if text, ok := progressMessages[message.Stage]; ok && callbacks.Progress != nil {
+				callbacks.Progress(Progress{Stage: message.Stage, Message: text()})
+			}
+		case "two_factor":
+			if callbacks.TwoFactorCode == nil {
+				return Result{}, errors.New(locales.ErrTwoFactorMissing())
+			}
+			code, err := callbacks.TwoFactorCode(processCtx)
+			if ctx.Err() != nil {
+				return Result{}, ctx.Err()
+			}
+			if err != nil {
+				return Result{}, errors.New(locales.ErrTwoFactorCancelled())
+			}
+			code = strings.TrimSpace(code)
+			if len(code) != 6 || strings.IndexFunc(code, func(r rune) bool { return r < '0' || r > '9' }) >= 0 {
+				return Result{}, errors.New(locales.ErrTwoFactorFormat())
+			}
+			if err := encoder.Encode(struct {
+				Type string `json:"type"`
+				Code string `json:"code"`
+			}{Type: "two_factor", Code: code}); err != nil {
+				return Result{}, errors.New(locales.ErrHelperSendCode())
+			}
+		case "result":
+			if completed || message.Result.P12Path == "" || filepath.Dir(message.Result.P12Path) != outputDir || filepath.Ext(message.Result.P12Path) != ".p12" {
+				return Result{}, errors.New(locales.ErrHelperResult())
+			}
+			if decoded, err := base64.StdEncoding.DecodeString(message.Result.CertificateDER); err == nil {
+				message.Result.certificate, _ = x509.ParseCertificate(decoded)
+			}
+			result, completed = message.Result, true
+		case "error":
+			if text, ok := helperErrors[message.Code]; ok {
+				return Result{}, errors.New(text())
+			}
+			return Result{}, errors.New(locales.ErrInternal())
+		default:
+			return Result{}, errors.New(locales.ErrHelperProtocol())
+		}
+	}
+	waitErr := cmd.Wait()
+	waited = true
+	if ctx.Err() != nil {
+		return Result{}, ctx.Err()
+	}
+	if scanner.Err() != nil || waitErr != nil || !completed {
+		return Result{}, errors.New(locales.ErrHelperExit())
+	}
+	return result, nil
 }

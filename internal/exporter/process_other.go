@@ -2,8 +2,6 @@
 
 package exporter
 
-import "errors"
+import "os/exec"
 
-func readCredential(string) ([]byte, error) {
-	return nil, errors.New("Windows credential store unavailable")
-}
+func configureCommand(cmd *exec.Cmd) {}

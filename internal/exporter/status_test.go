@@ -53,15 +53,15 @@ func TestCertificateStatusChecksSignedOCSP(t *testing.T) {
 	}
 	roots := x509.NewCertPool()
 	roots.AddCert(root)
-	result := Result{certificate: leaf, issuers: []*x509.Certificate{root}}
-	if got := checkStatus(context.Background(), result, roots); !strings.Contains(got, "状态：有效") {
+	issuers := []*x509.Certificate{root}
+	if got := checkStatus(context.Background(), leaf, issuers, roots); !strings.Contains(got, "Certificate valid") {
 		t.Fatalf("expected good status: %s", got)
 	}
 	status = ocsp.Revoked
-	if got := checkStatus(context.Background(), result, roots); !strings.Contains(got, "已吊销") {
+	if got := checkStatus(context.Background(), leaf, issuers, roots); !strings.Contains(got, "revoked") {
 		t.Fatalf("expected revoked status: %s", got)
 	}
-	if got := checkStatus(context.Background(), result, x509.NewCertPool()); !strings.Contains(got, "未知") {
+	if got := checkStatus(context.Background(), leaf, issuers, x509.NewCertPool()); !strings.Contains(got, "unknown") {
 		t.Fatalf("untrusted issuer should be unknown: %s", got)
 	}
 }

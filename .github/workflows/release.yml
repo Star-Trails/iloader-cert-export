@@ -23,8 +23,14 @@ jobs:
         with:
           go-version: '1.27.3'
           cache: true
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: '1.99.1'
       - name: Test
         run: go test ./...
+      - name: Build export helper
+        run: cargo build --release --locked --manifest-path helper/Cargo.toml
       - name: Build native app
         run: go run github.com/egoist/mygo/cmd/mygo@v0.7.3 build -platform windows/amd64
       - name: Package release files
@@ -33,7 +39,9 @@ jobs:
           $package = 'release/iloader-cert-export-windows-x64'
           New-Item -ItemType Directory -Force -Path $package | Out-Null
           Copy-Item 'dist/windows-amd64/iloader-cert-export.exe' $package
+          Copy-Item 'helper/target/release/iloader-cert-helper.exe' $package
           Copy-Item LICENSE $package
+          Copy-Item 'helper/LICENSE' "$package/iloader-export-LICENSE"
           $zip = 'release/iloader-cert-export-windows-x64.zip'
           Compress-Archive -Path "$package/*" -DestinationPath $zip
           $hash = (Get-FileHash -Algorithm SHA256 $zip).Hash.ToLowerInvariant()

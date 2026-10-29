@@ -1,0 +1,26 @@
+[package]
+name = "iloader-cert-helper"
+version = "1.0.0"
+edition = "2024"
+license = "MIT"
+publish = false
+
+[dependencies]
+isideload = { version = "=0.5.2", default-features = false, features = ["install", "keyring-storage", "fs-storage", "tokio-mt"] }
+apple-codesign-quick = "=0.1.0"
+keyring = { version = "3.6", features = ["windows-native"] }
+base64 = "0.22"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+rsa = "0.9"
+x509-cert = "0.2"
+sha2 = "0.11"
+hex = "0.4"
+rootcause = "0.12"
+rustls = { version = "0.23", default-features = false, features = ["ring", "tls12", "std"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+zeroize = { version = "1", features = ["derive"] }
+
+[profile.release]
+strip = true
+lto = "thin"

@@ -1,35 +1,49 @@
 # iloader-cert-export
 
-A Windows app that exports an existing [iloader](https://github.com/nab138/iloader) Apple Development identity as a password-protected `.p12` file, for importing into LiveContainer's JIT-less mode.
+A Windows app that exports the Apple Development identity iloader already uses as a password-protected `.p12` file, for importing into LiveContainer's JIT-less mode.
+
+The interface follows the Windows display language: English, Simplified Chinese, Traditional Chinese and Japanese ship with it.
+
+## How it gets the certificate
+
+iloader keeps the private key locally (Windows Credential Manager, or `%APPDATA%\me.nabdev.iloader\<sha256 of the lowercased Apple ID>\key`) and asks Apple for the matching certificate each time it signs. The temporary signed app is deleted afterwards, so the certificate is usually not on disk.
+
+This tool therefore:
+
+1. matches the stored private key against any `.mobileprovision` in `%APPDATA%\me.nabdev.iloader\`;
+2. if nothing matches, signs in to Apple with the account and password iloader saved, asks for a verification code if Apple requires one, and downloads the certificate whose public key matches that private key.
+
+It never creates, renews or revokes a certificate, and it leaves iloader's storage untouched.
 
 ## Prerequisites
 
-iloader keeps only the private key: it fetches the matching certificate from Apple at signing time and deletes the temporary signed app after installing, so nothing else is left behind. This tool therefore needs one local file that contains that certificate.
+- iloader has signed an app at least once while signed in to the account, under the same Windows user, so the private key exists.
+- Ticking iloader's save-credentials option during sign-in is what allows step 2 to run without typing the Apple ID password again. Without it, the app stops with an explanation instead of prompting for a password it does not have.
+- A trusted device or phone number for the verification code, if Apple asks for one.
+- Network access for step 2.
 
-Put a `.mobileprovision` in `%APPDATA%\me.nabdev.iloader\` whose `DeveloperCertificates` entry matches the private key iloader saved for the selected account. A profile left there by an earlier iloader version or an earlier signing works; the app picks the matching certificate with the latest expiry and ignores profiles that match nothing.
+## Use
 
-To confirm the key exists, look for a Windows Credential Manager entry ending in `.iloader`, or `%APPDATA%\me.nabdev.iloader\<sha256 of the lowercased Apple ID>\key`.
+1. Download the Windows x64 ZIP from [Releases](https://github.com/Star-Trails/iloader-cert-export/releases) and extract it, keeping both executables together.
+2. Open `iloader-cert-export.exe` as the Windows user that runs iloader.
+3. Choose a saved account, set a password for the file, pick a folder, and select Export.
+4. Move the `.p12` to the device, choose Import Certificate in LiveContainer, select the file and enter that password. Then check JIT-Less Mode Diagnose.
 
-If no matching profile is present, the app stops, leaves iloader untouched, and says so. It does not create, renew or revoke certificates.
+After writing the file, the app checks the certificate's validity dates and tries an OCSP revocation check with the issuer. An answer it cannot confirm is reported as unknown.
 
-## Download and use
-
-1. Download the Windows x64 ZIP from [Releases](https://github.com/Star-Trails/iloader-cert-export/releases) and extract it.
-2. Open `iloader-cert-export.exe` using the same Windows account you use for iloader.
-3. Select a saved iloader account, set a password for the exported file, choose a folder, and select **开始导出**. The interface is in Chinese.
-4. Transfer the `.p12` to your device. In LiveContainer, select **Import Certificate**, choose the file, and enter the password. Check **JIT-Less Mode Diagnose** afterwards.
-
-Export itself is offline: no Apple sign-in, no device connection. After the file is written, the app checks the certificate's validity dates and tries an OCSP revocation check with the certificate issuer. That status check is the only network access, and an unavailable answer is reported as unknown.
-
-Keep the exported file and its password private. The file contains your signing key.
+Keep the exported file and its password private: it contains your signing key.
 
 ## Build
 
-Go 1.27.3, from the project root:
+Go 1.27.3 and a Rust toolchain with the MSVC linker, from the project root:
 
 ```powershell
 go test ./...
+cargo build --release --locked --manifest-path helper/Cargo.toml
 go run github.com/egoist/mygo/cmd/mygo@v0.7.3 build -platform windows/amd64
+Copy-Item helper/target/release/iloader-cert-helper.exe dist/windows-amd64/
 ```
 
-The [release workflow](.github/workflows/release.yml) builds the Windows app and writes the ZIP plus a SHA-256 checksum. [MyGo](https://github.com/egoist/mygo) provides the native interface. This project is not affiliated with iloader, LiveContainer or Apple.
+The [release workflow](.github/workflows/release.yml) runs the same steps and writes the ZIP plus a SHA-256 checksum. [MyGo](https://github.com/egoist/mygo) draws the native interface and provides the catalog accessors in `locales/catalog_gen.go`, which is generated by `mygo generate` and committed so plain `go build` works. The helper uses [isideload](https://github.com/nab138/isideload) for Apple authentication and PKCS#12 handling, and includes code adapted from [iloader-export](https://github.com/black-night-heron/iloader-export); its MIT licence is in [`helper/LICENSE`](helper/LICENSE).
+
+This project is not affiliated with iloader, LiveContainer or Apple.

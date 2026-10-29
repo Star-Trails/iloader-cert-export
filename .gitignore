@@ -1,6 +1,7 @@
 # Build output
 /dist/
 /build/
+/helper/target/
 /*.exe
 *.syso
 

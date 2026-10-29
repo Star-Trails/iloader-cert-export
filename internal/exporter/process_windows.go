@@ -2,12 +2,11 @@
 
 package exporter
 
-import "github.com/danieljoos/wincred"
+import (
+	"os/exec"
+	"syscall"
+)
 
-func readCredential(entry string) ([]byte, error) {
-	credential, err := wincred.GetGenericCredential(entry + ".iloader")
-	if err != nil {
-		return nil, err
-	}
-	return credential.CredentialBlob, nil
+func configureCommand(cmd *exec.Cmd) {
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: 0x08000000}
 }

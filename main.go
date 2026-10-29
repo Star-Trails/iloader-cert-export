@@ -11,6 +11,8 @@ import (
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 
+	"github.com/Star-Trails/iloader-cert-export/locales"
+
 	"github.com/Star-Trails/iloader-cert-export/internal/exporter"
 )
 
@@ -27,14 +29,20 @@ type application struct {
 	p12Password     string
 	outputDir       string
 
-	busy              bool
-	picking           bool
-	cancel            context.CancelFunc
-	status            string
-	message           string
-	errorText         string
-	result            *exporter.Result
+	busy      bool
+	picking   bool
+	cancel    context.CancelFunc
+	status    string
+	message   string
+	errorText string
+	result    *exporter.Result
+
 	certificateStatus string
+
+	showTwoFactor bool
+	code          string
+	codeError     string
+	codeReply     chan string
 }
 
 func newApplication() *application {
@@ -63,7 +71,7 @@ func main() {
 			if a.cancel != nil {
 				a.cancel()
 			}
-			a.p12Password = ""
+			a.p12Password, a.code = "", ""
 		})
 		a.loadAccounts()
 	})
@@ -90,8 +98,8 @@ func (a *application) loadAccounts() {
 	}
 	a.loadingAccounts = true
 	a.errorText = ""
-	a.status = "正在读取账户"
-	a.message = "正在读取 iLoader 已保存的账户…"
+	a.status = locales.StatusReadingAccounts()
+	a.message = locales.MessageReadingAccounts()
 	previous := a.appleID
 	ctx, cancel := context.WithCancel(context.Background())
 	a.cancel = cancel
@@ -124,15 +132,15 @@ func (a *application) loadAccounts() {
 			}
 			switch {
 			case err != nil:
-				a.status = "无法读取账户"
-				a.message = "请检查错误详情，然后刷新账户列表。"
+				a.status = locales.StatusAccountsError()
+				a.message = locales.MessageAccountsErrorHint()
 				a.errorText = err.Error()
 			case len(accountIDs) == 0:
-				a.status = "未找到已保存的账户"
-				a.message = "请确认以使用 iLoader 的同一 Windows 用户运行，再点击“刷新账户”。"
+				a.status = locales.StatusNoAccounts()
+				a.message = locales.MessageNoAccountsHint()
 			default:
-				a.status = "准备导出"
-				a.message = "已读取 iLoader 账户。设置导出文件密码和保存位置后开始。"
+				a.status = locales.StatusReady()
+				a.message = locales.MessageReadyHint()
 			}
 		})
 	}()
@@ -146,13 +154,13 @@ func (a *application) chooseOutput() {
 	parent, initial := a.window, a.outputDir
 	go func() {
 		paths, err := mygo.Dialog.Open(mygo.OpenDialogOptions{
-			Parent: parent, Title: "选择证书保存文件夹", DefaultPath: initial,
-			ButtonLabel: "选择此文件夹", Directory: true, CreateDirectories: true,
+			Parent: parent, Title: locales.ChooseFolderTitle(), DefaultPath: initial,
+			ButtonLabel: locales.ChooseFolderButton(), Directory: true, CreateDirectories: true,
 		})
 		a.update(func() {
 			a.picking = false
 			if err != nil {
-				a.errorText = "无法选择保存文件夹：" + err.Error()
+				a.errorText = locales.ChooseFolderFailed(err.Error())
 			} else if len(paths) > 0 {
 				a.outputDir = paths[0]
 				a.errorText = ""
@@ -169,11 +177,11 @@ func (a *application) startExport() {
 	a.result = nil
 	switch {
 	case a.appleID == "":
-		a.errorText = "请选择 iLoader 已保存的账户。"
+		a.errorText = locales.ValidationAccount()
 	case a.p12Password == "":
-		a.errorText = "请设置用于保护 .p12 文件的密码。"
+		a.errorText = locales.ValidationPassword()
 	case strings.TrimSpace(a.outputDir) == "":
-		a.errorText = "请选择或填写保存文件夹。"
+		a.errorText = locales.ValidationOutput()
 	}
 	if a.errorText != "" {
 		return
@@ -186,8 +194,8 @@ func (a *application) startExport() {
 	ctx, cancel := context.WithCancel(context.Background())
 	a.cancel = cancel
 	a.busy = true
-	a.status = "正在准备"
-	a.message = "正在启动导出，请稍候…"
+	a.status = locales.StatusPreparing()
+	a.message = locales.MessageStarting()
 	go func() {
 		defer cancel()
 		service, err := exporter.New(exporter.Config{})
@@ -202,18 +210,21 @@ func (a *application) startExport() {
 						}
 					})
 				},
+				TwoFactorCode: a.requestTwoFactor,
 			})
 		}
 		a.update(func() {
 			a.busy = false
 			a.cancel = nil
-			a.p12Password = ""
+			a.showTwoFactor = false
+			a.codeReply = nil
+			a.p12Password, a.code = "", ""
 			switch {
 			case err == nil:
 				a.result = &result
-				a.status = "导出完成"
-				a.message = "证书已保存。请妥善保管文件及导出密码。"
-				a.certificateStatus = "正在检查证书状态…"
+				a.status = locales.StatusDone()
+				a.message = locales.MessageDone()
+				a.certificateStatus = locales.CertChecking()
 				go func() {
 					status := exporter.CheckStatus(context.Background(), result)
 					a.update(func() {
@@ -223,11 +234,11 @@ func (a *application) startExport() {
 					})
 				}()
 			case errors.Is(err, context.Canceled):
-				a.status = "已取消"
-				a.message = "导出已停止。再次导出时，请重新输入导出文件密码。"
+				a.status = locales.StatusCancelled()
+				a.message = locales.MessageCancelled()
 			default:
-				a.status = "导出失败"
-				a.message = "请根据错误信息检查本地证书后重试。"
+				a.status = locales.StatusFailed()
+				a.message = locales.MessageFailedHint()
 				a.errorText = err.Error()
 			}
 		})
@@ -237,7 +248,59 @@ func (a *application) startExport() {
 func (a *application) cancelExport() {
 	if a.cancel != nil {
 		a.cancel()
-		a.status = "正在取消"
-		a.message = "正在停止导出，请稍候…"
+		a.status = locales.StatusCancelling()
+		a.message = locales.MessageCancelling()
+	}
+	a.showTwoFactor = false
+	a.codeReply = nil
+	a.code = ""
+}
+
+func (a *application) requestTwoFactor(ctx context.Context) (string, error) {
+	reply := make(chan string, 1)
+	a.update(func() {
+		if ctx.Err() != nil {
+			return
+		}
+		a.code, a.codeError = "", ""
+		a.codeReply = reply
+		a.showTwoFactor = true
+		a.status = locales.StatusWaiting()
+		a.message = locales.MessageWaiting()
+	})
+	defer a.update(func() {
+		if a.codeReply == reply {
+			a.showTwoFactor = false
+			a.codeReply = nil
+			a.code = ""
+		}
+	})
+	select {
+	case <-ctx.Done():
+		return "", ctx.Err()
+	case code := <-reply:
+		return code, nil
+	}
+}
+
+func (a *application) submitTwoFactor() {
+	code := strings.TrimSpace(a.code)
+	valid := len(code) == 6
+	for _, digit := range code {
+		if digit < '0' || digit > '9' {
+			valid = false
+		}
+	}
+	if !valid {
+		a.codeError = locales.TwoFactorInvalid()
+		return
+	}
+	if a.codeReply != nil {
+		a.codeReply <- code
+		a.codeReply = nil
+		a.showTwoFactor = false
+		a.code = ""
+		a.status = locales.StatusVerifying()
+		a.message = locales.MessageVerifying()
 	}
 }

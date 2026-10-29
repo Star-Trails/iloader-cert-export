@@ -4,10 +4,11 @@ import (
 	"bytes"
 	"context"
 	"crypto/x509"
-	"fmt"
 	"io"
 	"net/http"
 	"time"
+
+	"github.com/Star-Trails/iloader-cert-export/locales"
 
 	"golang.org/x/crypto/ocsp"
 )
@@ -15,23 +16,22 @@ import (
 // CheckStatus checks the local validity dates and, where possible, the issuer's OCSP response.
 // A network failure or an untrusted issuer never becomes a valid status.
 func CheckStatus(ctx context.Context, result Result) string {
-	return checkStatus(ctx, result, nil)
+	return checkStatus(ctx, result.certificate, nil, nil)
 }
 
-func checkStatus(ctx context.Context, result Result, roots *x509.CertPool) string {
-	cert := result.certificate
+func checkStatus(ctx context.Context, cert *x509.Certificate, issuers []*x509.Certificate, roots *x509.CertPool) string {
 	if cert == nil {
-		return "证书状态：未知"
+		return locales.CertUnknown()
 	}
 	now := time.Now()
-	dates := fmt.Sprintf("有效期至 %s", cert.NotAfter.Local().Format("2006-01-02 15:04"))
+	dates := locales.CertDates(cert.NotAfter.Local().Format("2006-01-02"))
 	if now.Before(cert.NotBefore) || !now.Before(cert.NotAfter) {
-		return "证书已过期或尚未生效；" + dates
+		return locales.CertExpired(dates)
 	}
 	ctx, cancel := context.WithTimeout(ctx, 12*time.Second)
 	defer cancel()
 	client := &http.Client{Timeout: 10 * time.Second}
-	candidates := append([]*x509.Certificate(nil), result.issuers...)
+	candidates := append([]*x509.Certificate(nil), issuers...)
 	for _, address := range cert.IssuingCertificateURL {
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, address, nil)
 		if err != nil {
@@ -88,11 +88,11 @@ func checkStatus(ctx context.Context, result Result, roots *x509.CertPool) strin
 			}
 			switch status.Status {
 			case ocsp.Good:
-				return "证书状态：有效；" + dates
+				return locales.CertGood(dates)
 			case ocsp.Revoked:
-				return "证书状态：已吊销；" + dates
+				return locales.CertRevoked(dates)
 			}
 		}
 	}
-	return "证书状态：未知（未能确认吊销状态）；" + dates
+	return locales.CertUnverified(dates)
 }
