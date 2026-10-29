@@ -129,7 +129,7 @@ func (s *Service) Export(ctx context.Context, request Request, callbacks Callbac
 		return Result{}, errors.New("无法读取 iLoader 的本地描述文件")
 	}
 	if cert == nil {
-		return Result{}, errors.New("本地描述文件中没有与此私钥匹配且未过期的证书；请先使用 iLoader 签名应用")
+		return Result{}, fmt.Errorf("没有找到与此私钥匹配的本地证书。请把包含该证书的 .mobileprovision 放到 %s。", dir)
 	}
 	if err := ctx.Err(); err != nil {
 		return Result{}, err
