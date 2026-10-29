@@ -1,0 +1,11 @@
+# Build output
+/dist/
+/build/
+/*.exe
+*.syso
+
+# Local credentials and exported identities
+*.p12
+*.pfx
+*.mobileprovision
+.env
