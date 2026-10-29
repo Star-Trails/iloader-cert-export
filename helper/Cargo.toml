@@ -5,6 +5,10 @@ edition = "2024"
 license = "MIT"
 publish = false
 
+# Third-party adapters, kept deliberately narrow so a library upgrade stays local:
+#   isideload           -> src/apple.rs only (sign-in, certificate listing, PKCS#12)
+#   apple-codesign-quick -> src/profiles.rs only (local provisioning profiles)
+# Everything else uses std and general-purpose crates.
 [dependencies]
 isideload = { version = "=0.5.2", default-features = false, features = ["install", "keyring-storage", "fs-storage", "tokio-mt"] }
 apple-codesign-quick = "=0.1.0"
