@@ -56,7 +56,6 @@
   "messageWaiting": "信頼できるデバイスまたは SMS のコードを入力してください。",
   "messageVerifying": "コードを確認しています…",
   "stageStorage": "iLoader の秘密鍵を読み込み中",
-  "stageLocalProfiles": "ローカル証明書を検索中",
   "stageSavedCredentials": "保存済みの資格情報を読み込み中",
   "stageAuthenticating": "保存済みアカウントで認証中",
   "stageTwoFactor": "確認コードを待機中",

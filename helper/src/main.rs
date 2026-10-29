@@ -4,7 +4,6 @@
 mod apple;
 mod credentials;
 mod model;
-mod profiles;
 mod protocol;
 
 use std::path::Path;
@@ -28,20 +27,15 @@ async fn run() -> Result<ExportResult, &'static str> {
     }
     protocol::progress("storage")?;
     let key = credentials::key_der(&apple_id).ok_or("storage")?;
-    protocol::progress("local_profiles")?;
-    let found = match profiles::find_local(&key)? {
-        Some(found) => found,
-        None => {
-            // Only this path needs the network. iLoader's saved password keeps it unattended.
-            protocol::progress("saved_credentials")?;
-            let password: Zeroizing<String> =
-                credentials::saved_password(request.apple_id.trim()).ok_or("saved_credentials")?;
-            protocol::progress("authenticating")?;
-            let mut session = apple::sign_in(&apple_id, &password).await?;
-            protocol::progress("certificates")?;
-            apple::find_remote(&mut session, &key).await?
-        }
-    };
+    // iLoader keeps only the private key, so the matching certificate comes from Apple.
+    // Its saved password keeps this unattended; Apple asks for a code when it wants one.
+    protocol::progress("saved_credentials")?;
+    let password: Zeroizing<String> =
+        credentials::saved_password(request.apple_id.trim()).ok_or("saved_credentials")?;
+    protocol::progress("authenticating")?;
+    let mut session = apple::sign_in(&apple_id, &password).await?;
+    protocol::progress("certificates")?;
+    let found = apple::find_remote(&mut session, &key).await?;
     protocol::progress("writing")?;
     let path = apple::write_p12(&found, &key, &request.p12_password, output_dir).await?;
     protocol::progress("complete")?;

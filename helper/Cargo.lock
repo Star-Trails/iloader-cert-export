@@ -1426,7 +1426,6 @@ dependencies = [
 name = "iloader-cert-helper"
 version = "1.0.0"
 dependencies = [
- "apple-codesign-quick",
  "base64 0.22.1",
  "hex",
  "isideload",

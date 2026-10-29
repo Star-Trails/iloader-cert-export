@@ -597,16 +597,6 @@ func (msgs Messages) StageStorage() string {
 	return Catalog.Format(msgs.locale, "stageStorage", nil)
 }
 
-// StageLocalProfiles says "Searching local certificates"
-// in the language the app shows.
-func StageLocalProfiles() string { return In(i18n.Locale()).StageLocalProfiles() }
-
-// StageLocalProfiles says "Searching local certificates"
-// in the language of msgs.
-func (msgs Messages) StageLocalProfiles() string {
-	return Catalog.Format(msgs.locale, "stageLocalProfiles", nil)
-}
-
 // StageSavedCredentials says "Reading saved credentials"
 // in the language the app shows.
 func StageSavedCredentials() string { return In(i18n.Locale()).StageSavedCredentials() }

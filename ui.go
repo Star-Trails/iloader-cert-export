@@ -180,8 +180,6 @@ func stageTitle(stage string) string {
 	switch stage {
 	case "storage":
 		return locales.StageStorage()
-	case "local_profiles":
-		return locales.StageLocalProfiles()
 	case "saved_credentials":
 		return locales.StageSavedCredentials()
 	case "authenticating":

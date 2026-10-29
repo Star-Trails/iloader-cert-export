@@ -56,7 +56,6 @@
   "messageWaiting": "Enter the code from your trusted device or SMS.",
   "messageVerifying": "Verifying the code…",
   "stageStorage": "Reading the iLoader private key",
-  "stageLocalProfiles": "Searching local certificates",
   "stageSavedCredentials": "Reading saved credentials",
   "stageAuthenticating": "Signing in with the saved account",
   "stageTwoFactor": "Waiting for the verification code",

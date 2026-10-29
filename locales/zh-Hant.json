@@ -56,7 +56,6 @@
   "messageWaiting": "請輸入受信任裝置或簡訊中收到的驗證碼。",
   "messageVerifying": "正在驗證雙重認證驗證碼…",
   "stageStorage": "正在讀取 iLoader 私鑰",
-  "stageLocalProfiles": "正在尋找本機憑證",
   "stageSavedCredentials": "正在讀取已儲存的憑據",
   "stageAuthenticating": "正在使用已儲存的帳戶驗證",
   "stageTwoFactor": "等待雙重認證",

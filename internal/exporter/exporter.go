@@ -90,7 +90,6 @@ type event struct {
 
 var progressMessages = map[string]func() string{
 	"storage":           locales.StageStorage,
-	"local_profiles":    locales.StageLocalProfiles,
 	"saved_credentials": locales.StageSavedCredentials,
 	"authenticating":    locales.StageAuthenticating,
 	"two_factor":        locales.StageTwoFactor,
