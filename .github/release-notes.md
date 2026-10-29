@@ -9,6 +9,7 @@ Export the Apple Development identity iloader already uses as a password-protect
 - Fixed the app starting in Simplified Chinese instead of following the Windows display language.
 - Fixed the status bar and the language list keeping their previous language after switching.
 - Renamed the account section heading to simply Account.
+- Named Traditional Chinese as 正體中文 in the language list.
 
 **Set a strong, unique password for the file.** The `.p12` holds your signing key, and anyone with the file and its password can sign apps as your team until the certificate expires or is revoked. Keep the two apart and share neither.
 

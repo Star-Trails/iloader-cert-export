@@ -94,9 +94,18 @@ func (a *application) languageChoices() (tags, labels []string) {
 	tags = append([]string{""}, mygo.App.Languages()...)
 	labels = append(labels, locales.LanguageSystem())
 	for _, tag := range tags[1:] {
-		labels = append(labels, i18n.Autonym(tag))
+		labels = append(labels, languageName(tag))
 	}
 	return tags, labels
+}
+
+// languageName names a language in itself, except zh-Hant, which readers know as 正體中文
+// rather than the CLDR autonym.
+func languageName(tag string) string {
+	if tag == "zh-Hant" {
+		return "正體中文"
+	}
+	return i18n.Autonym(tag)
 }
 
 // systemLanguage is the language the app would show without a saved choice.
