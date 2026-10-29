@@ -2,7 +2,7 @@
   "@@locale": "zh-Hans",
   "headerSubtitle": "使用 iLoader 已保存的账户，导出用于 LiveContainer 的 .p12 签名证书。",
   "errorDetails": "错误详情",
-  "accountsHeading": "iLoader 账户",
+  "accountsHeading": "账户",
   "refreshAccounts": "刷新账户",
   "savedAccountLabel": "已保存的 Apple 账户",
   "savedAccountHint": "直接使用 iLoader 已保存的账户。",

@@ -2,7 +2,7 @@
   "@@locale": "en",
   "headerSubtitle": "Export the signing certificate iLoader already uses for LiveContainer as a .p12 file.",
   "errorDetails": "Error details",
-  "accountsHeading": "iLoader account",
+  "accountsHeading": "Account",
   "refreshAccounts": "Refresh",
   "savedAccountLabel": "Saved Apple account",
   "savedAccountHint": "Uses the account iLoader saved.",

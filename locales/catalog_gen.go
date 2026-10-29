@@ -57,11 +57,11 @@ func (msgs Messages) ErrorDetails() string {
 	return Catalog.Format(msgs.locale, "errorDetails", nil)
 }
 
-// AccountsHeading says "iLoader account"
+// AccountsHeading says "Account"
 // in the language the app shows.
 func AccountsHeading() string { return In(i18n.Locale()).AccountsHeading() }
 
-// AccountsHeading says "iLoader account"
+// AccountsHeading says "Account"
 // in the language of msgs.
 func (msgs Messages) AccountsHeading() string {
 	return Catalog.Format(msgs.locale, "accountsHeading", nil)

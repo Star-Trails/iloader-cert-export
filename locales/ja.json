@@ -2,7 +2,7 @@
   "@@locale": "ja",
   "headerSubtitle": "LiveContainer で使う iLoader の署名証明書を .p12 として書き出します。",
   "errorDetails": "エラーの詳細",
-  "accountsHeading": "iLoader アカウント",
+  "accountsHeading": "アカウント",
   "refreshAccounts": "更新",
   "savedAccountLabel": "保存済みの Apple アカウント",
   "savedAccountHint": "iLoader が保存したアカウントを使います。",

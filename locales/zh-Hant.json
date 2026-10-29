@@ -2,7 +2,7 @@
   "@@locale": "zh-Hant",
   "headerSubtitle": "使用 iLoader 已儲存的帳戶，匯出供 LiveContainer 使用的 .p12 簽章憑證。",
   "errorDetails": "錯誤詳情",
-  "accountsHeading": "iLoader 帳戶",
+  "accountsHeading": "帳戶",
   "refreshAccounts": "重新整理帳戶",
   "savedAccountLabel": "已儲存的 Apple 帳戶",
   "savedAccountHint": "直接使用 iLoader 已儲存的帳戶。",
