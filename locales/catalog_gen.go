@@ -1036,3 +1036,13 @@ func ErrHelperExit() string { return In(i18n.Locale()).ErrHelperExit() }
 func (msgs Messages) ErrHelperExit() string {
 	return Catalog.Format(msgs.locale, "errHelperExit", nil)
 }
+
+// LanguageSystem says "System default"
+// in the language the app shows.
+func LanguageSystem() string { return In(i18n.Locale()).LanguageSystem() }
+
+// LanguageSystem says "System default"
+// in the language of msgs.
+func (msgs Messages) LanguageSystem() string {
+	return Catalog.Format(msgs.locale, "languageSystem", nil)
+}

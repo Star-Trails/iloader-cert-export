@@ -99,5 +99,6 @@
   "errTwoFactorFormat": "Enter the 6-digit code.",
   "errHelperSendCode": "Cannot send the verification code to the export helper.",
   "errHelperResult": "The export helper returned an invalid file path.",
-  "errHelperExit": "The export helper stopped before confirming the export."
+  "errHelperExit": "The export helper stopped before confirming the export.",
+  "languageSystem": "System default"
 }

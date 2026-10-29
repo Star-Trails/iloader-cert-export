@@ -99,5 +99,6 @@
   "errTwoFactorFormat": "請輸入 6 位數字驗證碼",
   "errHelperSendCode": "無法向匯出輔助程式傳送驗證碼",
   "errHelperResult": "匯出輔助程式傳回的檔案路徑無效",
-  "errHelperExit": "匯出輔助程式意外結束，未確認匯出成功"
+  "errHelperExit": "匯出輔助程式意外結束，未確認匯出成功",
+  "languageSystem": "跟隨系統"
 }

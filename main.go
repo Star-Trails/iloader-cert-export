@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/egoist/mygo"
+	"github.com/egoist/mygo/i18n"
 	"github.com/egoist/mygo/ui"
 
 	"github.com/Star-Trails/iloader-cert-export/locales"
@@ -29,15 +30,20 @@ type application struct {
 	p12Password     string
 	outputDir       string
 
+	stage     string
 	busy      bool
 	picking   bool
 	cancel    context.CancelFunc
-	status    string
-	message   string
+	status    statusKind
+	message   messageKind
 	errorText string
 	result    *exporter.Result
 
 	certificateStatus string
+
+	languageLabel  string
+	languageLabels []string
+	languageTags   []string
 
 	showTwoFactor bool
 	code          string
@@ -50,7 +56,7 @@ func newApplication() *application {
 	if home, err := os.UserHomeDir(); err == nil {
 		output = filepath.Clean(home)
 	}
-	return &application{outputDir: output, status: "正在读取账户", message: "正在读取 iLoader 已保存的账户…"}
+	return &application{outputDir: output, status: statusReading, message: messageReading}
 }
 
 func main() {
@@ -73,10 +79,46 @@ func main() {
 			}
 			a.p12Password, a.code = "", ""
 		})
+		a.buildLanguageOptions()
 		a.loadAccounts()
 	})
 	if err := mygo.App.Run(); err != nil {
 		log.Print("无法启动证书导出窗口：", err)
+	}
+}
+
+// buildLanguageOptions lists the system default plus every language the catalogs ship,
+// each named in itself, and selects the one in use.
+func (a *application) buildLanguageOptions() {
+	tags := append([]string{""}, mygo.App.Languages()...)
+	labels := make([]string, 0, len(tags))
+	labels = append(labels, locales.LanguageSystem())
+	for _, tag := range tags[1:] {
+		labels = append(labels, i18n.Autonym(tag))
+	}
+	a.languageTags, a.languageLabels = tags, labels
+	current := mygo.App.Locale()
+	a.languageLabel = labels[0]
+	for index, tag := range tags {
+		if tag != "" && tag == current {
+			a.languageLabel = labels[index]
+			break
+		}
+	}
+}
+
+// applyLanguage switches the whole app language and remembers the choice.
+func (a *application) applyLanguage() {
+	for index, label := range a.languageLabels {
+		if label != a.languageLabel {
+			continue
+		}
+		tag := a.languageTags[index]
+		if tag != mygo.App.Locale() {
+			mygo.App.SetLocale(tag)
+		}
+		a.buildLanguageOptions()
+		return
 	}
 }
 
@@ -98,8 +140,8 @@ func (a *application) loadAccounts() {
 	}
 	a.loadingAccounts = true
 	a.errorText = ""
-	a.status = locales.StatusReadingAccounts()
-	a.message = locales.MessageReadingAccounts()
+	a.status = statusReading
+	a.message = messageReading
 	previous := a.appleID
 	ctx, cancel := context.WithCancel(context.Background())
 	a.cancel = cancel
@@ -132,15 +174,15 @@ func (a *application) loadAccounts() {
 			}
 			switch {
 			case err != nil:
-				a.status = locales.StatusAccountsError()
-				a.message = locales.MessageAccountsErrorHint()
+				a.status = statusAccountsError
+				a.message = messageAccountsError
 				a.errorText = err.Error()
 			case len(accountIDs) == 0:
-				a.status = locales.StatusNoAccounts()
-				a.message = locales.MessageNoAccountsHint()
+				a.status = statusNoAccounts
+				a.message = messageNoAccounts
 			default:
-				a.status = locales.StatusReady()
-				a.message = locales.MessageReadyHint()
+				a.status = statusReady
+				a.message = messageReady
 			}
 		})
 	}()
@@ -194,8 +236,8 @@ func (a *application) startExport() {
 	ctx, cancel := context.WithCancel(context.Background())
 	a.cancel = cancel
 	a.busy = true
-	a.status = locales.StatusPreparing()
-	a.message = locales.MessageStarting()
+	a.status = statusPreparing
+	a.message = messageStarting
 	go func() {
 		defer cancel()
 		service, err := exporter.New(exporter.Config{})
@@ -205,8 +247,9 @@ func (a *application) startExport() {
 				Progress: func(progress exporter.Progress) {
 					a.update(func() {
 						if ctx.Err() == nil {
-							a.status = stageTitle(progress.Stage)
-							a.message = progress.Message
+							a.stage = progress.Stage
+							a.status = statusStage
+							a.message = messageNone
 						}
 					})
 				},
@@ -222,8 +265,8 @@ func (a *application) startExport() {
 			switch {
 			case err == nil:
 				a.result = &result
-				a.status = locales.StatusDone()
-				a.message = locales.MessageDone()
+				a.status = statusDone
+				a.message = messageDone
 				a.certificateStatus = locales.CertChecking()
 				go func() {
 					status := exporter.CheckStatus(context.Background(), result)
@@ -234,11 +277,11 @@ func (a *application) startExport() {
 					})
 				}()
 			case errors.Is(err, context.Canceled):
-				a.status = locales.StatusCancelled()
-				a.message = locales.MessageCancelled()
+				a.status = statusCancelled
+				a.message = messageCancelled
 			default:
-				a.status = locales.StatusFailed()
-				a.message = locales.MessageFailedHint()
+				a.status = statusFailed
+				a.message = messageFailed
 				a.errorText = err.Error()
 			}
 		})
@@ -248,8 +291,8 @@ func (a *application) startExport() {
 func (a *application) cancelExport() {
 	if a.cancel != nil {
 		a.cancel()
-		a.status = locales.StatusCancelling()
-		a.message = locales.MessageCancelling()
+		a.status = statusCancelling
+		a.message = messageCancelling
 	}
 	a.showTwoFactor = false
 	a.codeReply = nil
@@ -265,8 +308,8 @@ func (a *application) requestTwoFactor(ctx context.Context) (string, error) {
 		a.code, a.codeError = "", ""
 		a.codeReply = reply
 		a.showTwoFactor = true
-		a.status = locales.StatusWaiting()
-		a.message = locales.MessageWaiting()
+		a.status = statusWaiting
+		a.message = messageWaiting
 	})
 	defer a.update(func() {
 		if a.codeReply == reply {
@@ -300,7 +343,7 @@ func (a *application) submitTwoFactor() {
 		a.codeReply = nil
 		a.showTwoFactor = false
 		a.code = ""
-		a.status = locales.StatusVerifying()
-		a.message = locales.MessageVerifying()
+		a.status = statusVerifying
+		a.message = messageVerifying
 	}
 }

@@ -40,7 +40,14 @@ func (a *application) view(c *ui.Context) {
 	const headerHeight, footerHeight = float32(102), float32(128)
 	c.Root().Clip()
 	ui.Column(c).Absolute().Top(0).Left(0).Size(width, headerHeight).Padding(16, 24).Gap(6).Children(func() {
-		ui.Text(c, "iloader-cert-export").FontSize(24).Bold()
+		ui.Row(c).MinWidth(0).AlignItems(ui.Center).Gap(12).Children(func() {
+			ui.Text(c, "iloader-cert-export").FontSize(24).Bold().Grow(1)
+			chosen := a.languageLabel
+			ui.Select(c.Key("language"), &a.languageLabel, a.languageLabels).MinWidth(0).Width(150)
+			if a.languageLabel != chosen {
+				a.applyLanguage()
+			}
+		})
 		ui.Text(c, locales.HeaderSubtitle()).Wrap().TextColor(t.TextMuted)
 	})
 	ui.Box(c).Absolute().Top(headerHeight-1).Left(0).Size(width, 1).Background(t.Border)
@@ -108,7 +115,11 @@ func (a *application) statusView(c *ui.Context, width, height float32) {
 				}
 				ui.Box(c).Size(8, 8).Radius(4).Background(color)
 			}
-			ui.Text(c, a.status).MinWidth(0).Grow(1).Bold()
+			title := statusText(a.status)
+			if a.status == statusStage {
+				title = stageTitle(a.stage)
+			}
+			ui.Text(c, title).MinWidth(0).Grow(1).Bold()
 			if a.busy {
 				if ui.Button(c.Key("cancel-export"), locales.CancelExport()).Clicked() {
 					a.cancelExport()
@@ -117,7 +128,9 @@ func (a *application) statusView(c *ui.Context, width, height float32) {
 				a.startExport()
 			}
 		})
-		ui.Text(c, a.message).Wrap().FontSize(13).TextColor(t.TextMuted)
+		if text := messageText(a.message); text != "" {
+			ui.Text(c, text).Wrap().FontSize(13).TextColor(t.TextMuted)
+		}
 		if a.errorText != "" {
 			ui.Text(c, locales.ErrorFooterHint()).FontSize(13).TextColor(t.Danger)
 		}
@@ -174,6 +187,103 @@ func (a *application) twoFactorView(c *ui.Context) {
 	if modal.Dismissed() && a.codeReply != nil {
 		a.cancelExport()
 	}
+}
+
+// statusKind and messageKind keep state language-neutral, so a language change redraws
+// the footer instead of leaving the text it was built with.
+type statusKind int
+
+const (
+	statusReading statusKind = iota
+	statusAccountsError
+	statusNoAccounts
+	statusReady
+	statusPreparing
+	statusStarting
+	statusDone
+	statusCancelled
+	statusFailed
+	statusCancelling
+	statusWaiting
+	statusVerifying
+	statusStage
+)
+
+type messageKind int
+
+const (
+	messageNone messageKind = iota
+	messageReading
+	messageAccountsError
+	messageNoAccounts
+	messageReady
+	messageStarting
+	messageDone
+	messageCancelled
+	messageFailed
+	messageCancelling
+	messageWaiting
+	messageVerifying
+)
+
+func statusText(kind statusKind) string {
+	switch kind {
+	case statusReading:
+		return locales.StatusReadingAccounts()
+	case statusAccountsError:
+		return locales.StatusAccountsError()
+	case statusNoAccounts:
+		return locales.StatusNoAccounts()
+	case statusReady:
+		return locales.StatusReady()
+	case statusPreparing:
+		return locales.StatusPreparing()
+	case statusStarting:
+		return locales.StatusStarting()
+	case statusDone:
+		return locales.StatusDone()
+	case statusCancelled:
+		return locales.StatusCancelled()
+	case statusFailed:
+		return locales.StatusFailed()
+	case statusCancelling:
+		return locales.StatusCancelling()
+	case statusWaiting:
+		return locales.StatusWaiting()
+	case statusVerifying:
+		return locales.StatusVerifying()
+	case statusStage:
+		return locales.StageDefault()
+	}
+	return locales.StageDefault()
+}
+
+func messageText(kind messageKind) string {
+	switch kind {
+	case messageReading:
+		return locales.MessageReadingAccounts()
+	case messageAccountsError:
+		return locales.MessageAccountsErrorHint()
+	case messageNoAccounts:
+		return locales.MessageNoAccountsHint()
+	case messageReady:
+		return locales.MessageReadyHint()
+	case messageStarting:
+		return locales.MessageStarting()
+	case messageDone:
+		return locales.MessageDone()
+	case messageCancelled:
+		return locales.MessageCancelled()
+	case messageFailed:
+		return locales.MessageFailedHint()
+	case messageCancelling:
+		return locales.MessageCancelling()
+	case messageWaiting:
+		return locales.MessageWaiting()
+	case messageVerifying:
+		return locales.MessageVerifying()
+	}
+	return ""
 }
 
 func stageTitle(stage string) string {

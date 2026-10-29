@@ -99,5 +99,6 @@
   "errTwoFactorFormat": "请输入 6 位数字验证码",
   "errHelperSendCode": "无法向导出助手发送验证码",
   "errHelperResult": "导出助手返回的文件路径无效",
-  "errHelperExit": "导出助手意外结束，未确认导出成功"
+  "errHelperExit": "导出助手意外结束，未确认导出成功",
+  "languageSystem": "跟随系统"
 }

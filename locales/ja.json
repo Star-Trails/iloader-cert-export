@@ -99,5 +99,6 @@
   "errTwoFactorFormat": "6 桁のコードを入力してください。",
   "errHelperSendCode": "確認コードを書き出しヘルパーに送信できません。",
   "errHelperResult": "書き出しヘルパーが不正なファイルパスを返しました。",
-  "errHelperExit": "書き出しヘルパーが完了を確認する前に終了しました。"
+  "errHelperExit": "書き出しヘルパーが完了を確認する前に終了しました。",
+  "languageSystem": "システム設定に従う"
 }
