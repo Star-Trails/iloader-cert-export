@@ -52,11 +52,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $enabled = gh api "repos/$env:GITHUB_REPOSITORY/immutable-releases" --jq '.enabled'
-          if ($LASTEXITCODE -ne 0 -or $enabled -ne 'true') { throw 'Immutable releases must be enabled before publishing.' }
           gh release create "$env:GITHUB_REF_NAME" --verify-tag --draft --title "$env:GITHUB_REF_NAME" --notes-file .github/release-notes.md
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           gh release upload "$env:GITHUB_REF_NAME" release/iloader-cert-export-windows-x64.zip release/SHA256SUMS.txt
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           gh release edit "$env:GITHUB_REF_NAME" --draft=false
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $immutable = gh release view "$env:GITHUB_REF_NAME" --json isImmutable --jq '.isImmutable'
+          if ($LASTEXITCODE -ne 0 -or $immutable -ne 'true') { throw 'The published release is not immutable; check the repository setting.' }
