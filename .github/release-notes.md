@@ -5,11 +5,12 @@ Export the Apple Development identity iloader already uses as a password-protect
 - Signs in with the account and password iloader saved, asks for a verification code when Apple requires one, and downloads the certificate matching the stored private key. No device connection is involved.
 - Checks validity dates after writing the file and asks the issuer's OCSP responder about revocation; an unconfirmed answer is reported as unknown.
 - Never creates, renews or revokes certificates, and leaves iloader storage unchanged.
-- Interface in English, Simplified Chinese, Traditional Chinese and Japanese, with a language selector in the header that is remembered between launches.
+- Interface in English, Simplified Chinese, Traditional Chinese, Japanese and Korean, with a language selector in the header that is remembered between launches.
 - Fixed the app starting in Simplified Chinese instead of following the Windows display language.
 - Fixed the status bar and the language list keeping their previous language after switching.
 - Renamed the account section heading to simply Account.
 - Named Traditional Chinese as 正體中文 in the language list.
+- Added Korean.
 
 **Set a strong, unique password for the file.** The `.p12` holds your signing key, and anyone with the file and its password can sign apps as your team until the certificate expires or is revoked. Keep the two apart and share neither.
 

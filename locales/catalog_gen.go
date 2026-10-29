@@ -16,8 +16,8 @@ import (
 //go:embed *.json
 var files embed.FS
 
-// Catalog holds the messages in en, the source language, and ja, zh-Hans
-// and zh-Hant. It is registered with package i18n, which makes its
+// Catalog holds the messages in en, the source language, and ja, ko,
+// zh-Hans and zh-Hant. It is registered with package i18n, which makes its
 // languages the app's.
 var Catalog *i18n.Catalog
 

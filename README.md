@@ -2,7 +2,7 @@
 
 A Windows app that exports the Apple Development identity iloader already uses as a password-protected `.p12` file, for importing into LiveContainer's JIT-less mode.
 
-The interface ships in English, Simplified Chinese, Traditional Chinese (正體中文) and Japanese. The selector in the header switches language at any time, and the choice is remembered; System default follows the Windows display language.
+The interface ships in English, Simplified Chinese, Traditional Chinese (正體中文), Japanese and Korean. The selector in the header switches language at any time, and the choice is remembered; System default follows the Windows display language.
 
 ## Set a strong password
 
