@@ -14,7 +14,7 @@
   "outputLabel": "儲存資料夾",
   "outputPlaceholder": "選擇或輸入資料夾路徑",
   "chooseFolder": "選擇資料夾",
-  "localFirstHint": "優先使用 iLoader 本機憑證；僅在確實需要驗證時才會要求輸入驗證碼。",
+  "localFirstHint": "將使用 iLoader 已儲存的憑據向 Apple 取得憑證；僅當 Apple 要求時才會提示輸入驗證碼。",
   "busy": "正在處理",
   "cancelExport": "取消匯出",
   "startExport": "開始匯出",

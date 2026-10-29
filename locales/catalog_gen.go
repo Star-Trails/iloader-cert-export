@@ -177,11 +177,11 @@ func (msgs Messages) ChooseFolder() string {
 	return Catalog.Format(msgs.locale, "chooseFolder", nil)
 }
 
-// LocalFirstHint says "Local iLoader data is used first; a verification code is requested only when Apple requires it."
+// LocalFirstHint says "The certificate is fetched from Apple with the credentials iLoader saved; a verification code is asked only when Appl…"
 // in the language the app shows.
 func LocalFirstHint() string { return In(i18n.Locale()).LocalFirstHint() }
 
-// LocalFirstHint says "Local iLoader data is used first; a verification code is requested only when Apple requires it."
+// LocalFirstHint says "The certificate is fetched from Apple with the credentials iLoader saved; a verification code is asked only when Appl…"
 // in the language of msgs.
 func (msgs Messages) LocalFirstHint() string {
 	return Catalog.Format(msgs.locale, "localFirstHint", nil)

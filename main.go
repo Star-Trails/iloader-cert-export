@@ -41,9 +41,7 @@ type application struct {
 
 	certificateStatus string
 
-	languageLabel  string
-	languageLabels []string
-	languageTags   []string
+	languageTag string
 
 	showTwoFactor bool
 	code          string
@@ -61,7 +59,6 @@ func newApplication() *application {
 
 func main() {
 	a := newApplication()
-	mygo.App.SetLocale("zh-Hans")
 	mygo.App.WhenReady(func() {
 		a.window = mygo.NewWindow(mygo.WindowOptions{
 			Title:           "iloader-cert-export",
@@ -79,7 +76,11 @@ func main() {
 			}
 			a.p12Password, a.code = "", ""
 		})
-		a.buildLanguageOptions()
+		if mygo.App.Locale() == a.systemLanguage() {
+			a.languageTag = ""
+		} else {
+			a.languageTag = mygo.App.Locale()
+		}
 		a.loadAccounts()
 	})
 	if err := mygo.App.Run(); err != nil {
@@ -87,39 +88,38 @@ func main() {
 	}
 }
 
-// buildLanguageOptions lists the system default plus every language the catalogs ship,
-// each named in itself, and selects the one in use.
-func (a *application) buildLanguageOptions() {
-	tags := append([]string{""}, mygo.App.Languages()...)
-	labels := make([]string, 0, len(tags))
+// languageChoices lists the system default plus every language the catalogs ship,
+// named in the app's current language for the default and in itself for the rest.
+func (a *application) languageChoices() (tags, labels []string) {
+	tags = append([]string{""}, mygo.App.Languages()...)
 	labels = append(labels, locales.LanguageSystem())
 	for _, tag := range tags[1:] {
 		labels = append(labels, i18n.Autonym(tag))
 	}
-	a.languageTags, a.languageLabels = tags, labels
-	current := mygo.App.Locale()
-	a.languageLabel = labels[0]
-	for index, tag := range tags {
-		if tag != "" && tag == current {
-			a.languageLabel = labels[index]
-			break
-		}
-	}
+	return tags, labels
 }
 
-// applyLanguage switches the whole app language and remembers the choice.
-func (a *application) applyLanguage() {
-	for index, label := range a.languageLabels {
-		if label != a.languageLabel {
-			continue
+// systemLanguage is the language the app would show without a saved choice.
+func (a *application) systemLanguage() string {
+	languages := mygo.App.Languages()
+	for _, preferred := range mygo.App.PreferredLanguages() {
+		for _, tag := range languages {
+			if i18n.Normalize(preferred) == i18n.Normalize(tag) ||
+				strings.HasPrefix(i18n.Normalize(preferred), i18n.Normalize(tag)+"-") {
+				return tag
+			}
 		}
-		tag := a.languageTags[index]
-		if tag != mygo.App.Locale() {
-			mygo.App.SetLocale(tag)
-		}
-		a.buildLanguageOptions()
-		return
 	}
+	if len(languages) > 0 {
+		return languages[0]
+	}
+	return "en"
+}
+
+// setLanguage switches the whole app language and remembers the choice; "" follows the system.
+func (a *application) setLanguage(tag string) {
+	a.languageTag = tag
+	mygo.App.SetLocale(tag)
 }
 
 func (a *application) update(fn func()) {

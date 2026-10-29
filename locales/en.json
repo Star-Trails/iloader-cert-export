@@ -14,7 +14,7 @@
   "outputLabel": "Folder",
   "outputPlaceholder": "Choose or type a folder",
   "chooseFolder": "Choose folder",
-  "localFirstHint": "Local iLoader data is used first; a verification code is requested only when Apple requires it.",
+  "localFirstHint": "The certificate is fetched from Apple with the credentials iLoader saved; a verification code is asked only when Apple requires one.",
   "busy": "Working",
   "cancelExport": "Cancel",
   "startExport": "Export",

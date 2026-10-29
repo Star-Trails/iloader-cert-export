@@ -2,7 +2,7 @@
   "name": "iloader-cert-export",
   "slug": "iloader-cert-export",
   "identifier": "app.iloader-cert-export",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "icon": "resources/icon.png",
   "windows": {
     "displayName": "iloader-cert-export"

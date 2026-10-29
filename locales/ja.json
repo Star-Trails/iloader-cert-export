@@ -14,7 +14,7 @@
   "outputLabel": "保存先フォルダー",
   "outputPlaceholder": "フォルダーを選択または入力",
   "chooseFolder": "フォルダーを選択",
-  "localFirstHint": "まず iLoader のローカルデータを使い、Apple が要求した場合だけ確認コードを求めます。",
+  "localFirstHint": "iLoader が保存した資格情報で Apple から証明書を取得します。Apple が要求した場合のみ確認コードを求めます。",
   "busy": "処理中",
   "cancelExport": "中止",
   "startExport": "書き出す",

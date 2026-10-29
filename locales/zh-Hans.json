@@ -14,7 +14,7 @@
   "outputLabel": "保存文件夹",
   "outputPlaceholder": "选择或填写文件夹路径",
   "chooseFolder": "选择文件夹",
-  "localFirstHint": "优先使用 iLoader 本地证书；仅在确实需要验证时才会提示输入验证码。",
+  "localFirstHint": "将使用 iLoader 已保存的凭据向 Apple 获取证书；仅当 Apple 要求时才会提示输入验证码。",
   "busy": "正在处理",
   "cancelExport": "取消导出",
   "startExport": "开始导出",

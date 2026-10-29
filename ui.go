@@ -42,10 +42,22 @@ func (a *application) view(c *ui.Context) {
 	ui.Column(c).Absolute().Top(0).Left(0).Size(width, headerHeight).Padding(16, 24).Gap(6).Children(func() {
 		ui.Row(c).MinWidth(0).AlignItems(ui.Center).Gap(12).Children(func() {
 			ui.Text(c, "iloader-cert-export").FontSize(24).Bold().Grow(1)
-			chosen := a.languageLabel
-			ui.Select(c.Key("language"), &a.languageLabel, a.languageLabels).MinWidth(0).Width(150)
-			if a.languageLabel != chosen {
-				a.applyLanguage()
+			// Labels are rebuilt every frame from the current language, so the
+			// system option and the selected autonym follow a language change.
+			tags, labels := a.languageChoices()
+			chosen := labels[0]
+			for index, tag := range tags {
+				if tag == a.languageTag {
+					chosen = labels[index]
+					break
+				}
+			}
+			ui.Select(c.Key("language"), &chosen, labels).MinWidth(0).Width(150)
+			for index, label := range labels {
+				if label == chosen && tags[index] != a.languageTag {
+					a.setLanguage(tags[index])
+					break
+				}
 			}
 		})
 		ui.Text(c, locales.HeaderSubtitle()).Wrap().TextColor(t.TextMuted)
