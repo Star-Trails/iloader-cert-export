@@ -1,5 +1,5 @@
 // iloader-cert-helper: exports the identity iLoader already uses.
-// Only apple.rs touches isideload and only profiles.rs touches apple-codesign-quick.
+// Only apple.rs touches isideload.
 
 mod apple;
 mod credentials;

@@ -55,13 +55,15 @@ The [release workflow](.github/workflows/release.yml) runs the same steps and wr
 
 Third-party Apple code is confined to one adapter, so a library upgrade stays local:
 
-| File | Contents | Third-party code |
+| File | Contents | Library it calls |
 |---|---|---|
 | `helper/src/protocol.rs` | line-delimited JSON between app and helper | serde |
 | `helper/src/credentials.rs` | iLoader's credential-store reads | keyring |
 | `helper/src/apple.rs` | sign-in, certificate listing, PKCS#12 | isideload |
 | `helper/src/model.rs` | plain structs crossing module boundaries | none |
 | `helper/src/main.rs` | wiring | none |
+
+Every file here is written for this project. The exception is `apple.rs`, whose certificate lookup by public key and exclusive `.p12` naming are adapted from iloader-export (MIT, licence in [`helper/LICENSE`](helper/LICENSE)).
 
 To upgrade `isideload`, change its version in `helper/Cargo.toml`, run `cargo build --release`, then fix whatever the compiler reports in `apple.rs` alone. The protocol in `protocol.rs` is what the Go side depends on; keep its field names stable or change both sides together.
 

@@ -1,4 +1,7 @@
 // The only module that uses isideload. Upgrading that library should touch this file alone.
+//
+// The certificate lookup by public key and the exclusive .p12 naming follow
+// black-night-heron/iloader-export (MIT); see ../LICENSE.
 
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
