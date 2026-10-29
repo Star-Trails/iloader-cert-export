@@ -8,10 +8,9 @@ The interface follows the Windows display language: English, Simplified Chinese,
 
 iloader keeps the private key locally (Windows Credential Manager, or `%APPDATA%\me.nabdev.iloader\<sha256 of the lowercased Apple ID>\key`) and asks Apple for the matching certificate each time it signs. The temporary signed app is deleted afterwards, so the certificate is usually not on disk.
 
-This tool therefore:
+This tool therefore signs in to Apple with the account and password iloader saved, asks for a verification code if Apple requires one, and downloads the certificate whose public key matches the stored private key.
 
-1. matches the stored private key against any `.mobileprovision` in `%APPDATA%\me.nabdev.iloader\`;
-2. if nothing matches, signs in to Apple with the account and password iloader saved, asks for a verification code if Apple requires one, and downloads the certificate whose public key matches that private key.
+A local `.mobileprovision` in `%APPDATA%\me.nabdev.iloader\` is checked first, but iLoader does not normally leave one there, so treat that as an edge case: it only saves a network round trip when an older iLoader or another tool happened to drop a matching profile.
 
 It never creates, renews or revokes a certificate, and it leaves iloader's storage untouched.
 

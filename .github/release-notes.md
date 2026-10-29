@@ -2,8 +2,8 @@
 
 Export the Apple Development identity iloader already uses as a password-protected `.p12` file on Windows x64, for importing into LiveContainer.
 
-- Matches the private key iloader saved against local `.mobileprovision` files first.
-- If nothing matches, signs in with the account and password iloader saved, asks for a verification code when Apple requires one, and downloads the certificate that matches that key.
+- Signs in with the account and password iloader saved, asks for a verification code when Apple requires one, and downloads the certificate matching the stored private key.
+- Checks any local `.mobileprovision` first, but iloader does not normally leave one behind, so this is an edge case rather than the expected path.
 - Checks validity dates after writing the file and attempts an OCSP revocation check; an unconfirmed answer is reported as unknown.
 - Never creates, renews or revokes certificates, and leaves iloader storage unchanged.
 - Interface in English, Simplified Chinese, Traditional Chinese and Japanese, following the Windows display language.
